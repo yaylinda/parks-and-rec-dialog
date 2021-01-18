@@ -1,5 +1,10 @@
 setwd("~/Developer/parks-and-rec-dialog")
 
+library(ggplot2)
+library(treemapify)
+library(RColorBrewer)
+library(stringr)
+
 #==========================================================
 # Read data
 #==========================================================
@@ -31,6 +36,225 @@ for (file_name in filenames) {
   data = rbind(data, file_data)
 }
 
+data$NumWords = sapply(strsplit(data$Line, " "), length)
+
 #==========================================================
-# Read data
+# Aggregate data
 #==========================================================
+
+num_words_by_character = aggregate(
+  data$NumWords,
+  by = list(
+    Charater = data$Character
+  ),
+  sum
+)
+
+top_characters = c(
+  "Leslie Knope",
+  "Tom Haverford",
+  "Ron Swanson",
+  "Ben Wyatt",
+  "Andy Dwyer",
+  "Ann Perkins",
+  "April Ludgate",
+  "Chris Traeger",
+  "Donna Meagle",
+  "Jerry Gergich"
+)
+
+num_words_by_character_by_episode = aggregate(
+  data$NumWords,
+  by = list(
+    Season = data$Season,
+    Episode = data$Episode,
+    Charater = data$Character
+  ),
+  sum
+)
+
+num_words_by_character_by_episode$Label = ifelse(
+  num_words_by_character_by_episode$Charater %in% top_characters,
+  num_words_by_character_by_episode$Charater,
+  "Other"
+)
+
+num_words_by_label_by_episode = aggregate(
+  num_words_by_character_by_episode$x,
+  by = list(
+    Season = num_words_by_character_by_episode$Season,
+    Episode = num_words_by_character_by_episode$Episode,
+    Label = num_words_by_character_by_episode$Label
+  ),
+  sum
+)
+
+num_words_by_label_by_episode$Season = paste(
+  "Season ", 
+  num_words_by_label_by_episode$Season, 
+  sep = ""
+)
+
+num_words_by_label_by_episode$Episode = paste(
+  "Episode ", 
+  num_words_by_label_by_episode$Episode, 
+  sep = ""
+)
+num_words_by_label_by_episode$Episode = factor(
+  num_words_by_label_by_episode$Episode,
+  levels = str_sort(unique(num_words_by_label_by_episode$Episode), numeric = TRUE)
+)
+
+# num episodes per season
+num_episodes_per_season = aggregate(
+  num_words_by_label_by_episode$Episode,
+  by = list(
+    num_words_by_label_by_episode$Season
+  ),
+  max
+)
+
+colnames(num_episodes_per_season) = c(
+  "Season",
+  "NumEpisodes"
+)
+
+#==========================================================
+# Plots
+#==========================================================
+
+#--------------------------------------
+# Helper function to plot one episode
+#--------------------------------------
+plot_one_episode = function(season, episode) {
+  episode_data = subset(
+    num_words_by_label_by_episode,
+    num_words_by_label_by_episode$Season == season 
+      & num_words_by_label_by_episode$Episode == episode
+  )
+  
+  ggplot(
+    episode_data,
+    aes(
+      area = x,
+      label = Label,
+      fill = factor(
+        Label, 
+        levels = c(top_characters, "Other")
+      )
+    )
+  ) + 
+    geom_treemap(
+      
+    ) +
+    geom_treemap_text(
+      family = "mono",
+      color = "white",
+      place = "center"
+    )
+}
+
+#--------------------------------------
+# Make one plot for each episode
+#--------------------------------------
+
+all_plots = c()
+
+for (season_num in num_episodes_per_season$Season) {
+  num_episodes = subset(
+    num_episodes_per_season,
+    num_episodes_per_season$Season == season_num
+  )$NumEpisodes
+  
+  for (episode_num in num_episodes) {
+    episode_plot = plot_one_episode(
+      season_num,
+      episode_num
+    )
+    all_plots = c(all_plots, episode_plot)
+  }
+}
+
+#--------------------------------------
+# Arrange plots in a grid
+#--------------------------------------
+
+top_characters = c(
+  "Leslie",
+  "Tom",
+  "Ron",
+  "Ben",
+  "Andy",
+  "Ann",
+  "April",
+  "Chris",
+  "Donna",
+  "Jerry"
+)
+
+num_words_by_label_by_episode$Label = word(num_words_by_label_by_episode$Label, 1)
+  
+ggplot(
+  num_words_by_label_by_episode,
+  aes(
+    area = x,
+    label = factor(
+      Label, 
+      levels = c(top_characters, "Other")
+    ),
+    fill = factor(
+      Label, 
+      levels = c(top_characters, "Other")
+    )
+  )
+) + 
+  geom_treemap(
+    
+  ) +
+  geom_treemap_text(
+    family = "mono",
+    color = "white",
+    place = "center"
+  ) + 
+  facet_grid(
+    Episode ~ Season,
+    switch = "y", 
+    space = "free", 
+  ) +
+  labs(
+    title = "Parks & Recreation Characters Dialog",
+    fill = "Character"
+  ) +
+  scale_fill_manual(
+    values = brewer.pal(
+      n = length(top_characters) + 1, 
+      name = "Set3"
+    ),
+    breaks = c(top_characters, "Other"),
+    labels = c(top_characters, "Other")
+  ) +
+  theme(
+    text = element_text(family = "mono"),
+    strip.text.y.left = element_text(angle = 0)
+  )
+
+ggsave(
+  paste("plot.png", sep = ""),
+  path = "~/Developer/parks-and-rec-dialog",
+  dpi = 320,
+  width = 10,
+  height = 16,
+  device = "png",
+  units = "in"
+)
+
+
+
+
+
+
+
+
+
+
+
