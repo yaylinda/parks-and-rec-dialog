@@ -213,7 +213,7 @@ ggplot(
   ) +
   geom_treemap_text(
     family = "mono",
-    color = "white",
+    color = "black",
     place = "center"
   ) + 
   facet_grid(
@@ -222,7 +222,7 @@ ggplot(
     space = "free", 
   ) +
   labs(
-    title = "Parks & Recreation Characters Dialog",
+    title = "Parks and Recreation: Proportion of Words Spoken",
     fill = "Character"
   ) +
   scale_fill_manual(
@@ -235,7 +235,12 @@ ggplot(
   ) +
   theme(
     text = element_text(family = "mono"),
-    strip.text.y.left = element_text(angle = 0)
+    plot.title = element_text(size = rel(2), margin = margin(b = 10), face = "bold"),
+    plot.margin = margin(t = 10, b = 10, l = 10, r = 10),
+    strip.text = element_text(face = "bold"),
+    strip.text.y.left = element_text(angle = 0),
+    legend.title = element_text(size = rel(1.5), face = "bold"),
+    legend.text = element_text(size = rel(1.5))
   )
 
 ggsave(
@@ -247,14 +252,4 @@ ggsave(
   device = "png",
   units = "in"
 )
-
-
-
-
-
-
-
-
-
-
 
